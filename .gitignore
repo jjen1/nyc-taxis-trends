@@ -1,0 +1,8 @@
+# ignore data files
+data/
+*.csv
+*.parquet
+
+# jupyter auto-saves
+.ipynb_checkpoints/
+
