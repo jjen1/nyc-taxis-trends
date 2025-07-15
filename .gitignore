@@ -6,3 +6,6 @@ data/
 # jupyter auto-saves
 .ipynb_checkpoints/
 
+# python cache files
+*.pyc
+__pycache__/
