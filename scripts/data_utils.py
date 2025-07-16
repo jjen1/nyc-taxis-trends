@@ -83,3 +83,4 @@ def categorize_zones(borough_pu, borough_do, borough_avg_fare, avg_fare_col='avg
     avg_zones = pd.concat([avg_pu, avg_do], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='average_zones')
 
     return pricey_zones, cheap_zones, avg_zones
+
