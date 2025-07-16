@@ -50,3 +50,36 @@ def remove_cancelled_fare_pairs(df, matched_pairs, ride_id_cols = ['VendorID','P
     # Remove any remaining negative fares not affiliated with a matching pair
     df_cleaned = df_cleaned[df_cleaned['fare_amount'] >= 0]
     return df_cleaned.reset_index(drop=True)
+
+def categorize_zones(borough_pu, borough_do, borough_avg_fare, avg_fare_col='avg_fare', pu_zone_col='PU_Zone', do_zone_col='DO_Zone'):
+    """
+    categorize zones based on average fare amounts and their quartiles
+    returns 3 dataframes: pricey_zones, cheap_zones, avg_zones
+    - pricey_zones: zones with fares above the 75th percentile of borough average fare
+    - cheap_zones: zones with fares below the 25th percentile of borough average fare
+    - avg_zones: zones with fares between the 25th and 75th percentiles of borough average fare 
+    """
+    # finding the 75th percentile of fares that are above the borough average fare 
+    pu_75 = borough_pu[borough_pu[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
+    do_75 = borough_do[borough_do[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
+
+    # finding the 25th percentile of fares that are lower than the borough average fare 
+    pu_25 = borough_pu[borough_pu[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
+    do_25 = borough_do[borough_do[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
+
+    # pricier zones: based on the 75th percentile of fares
+    pricey_pu_zones = borough_pu[(borough_pu[avg_fare_col] > borough_avg_fare) & (borough_pu[avg_fare_col] > pu_75)][pu_zone_col]  
+    pricey_do_zones = borough_do[(borough_do[avg_fare_col] > borough_avg_fare) & (borough_do[avg_fare_col] > do_75)][do_zone_col]
+    pricey_zones = pd.concat([pricey_pu_zones, pricey_do_zones], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='pricier_zones')
+
+    # cheap zones: based on the 25th percentile of fares
+    cheap_pu_zones = borough_pu[(borough_pu[avg_fare_col] < borough_avg_fare) & (borough_pu[avg_fare_col] < pu_25)][pu_zone_col]  
+    cheap_do_zones = borough_do[(borough_do[avg_fare_col] < borough_avg_fare) & (borough_do[avg_fare_col] < do_25)][do_zone_col]
+    cheap_zones = pd.concat([cheap_pu_zones, cheap_do_zones], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='cheaper_zones')
+
+    # average zones: based on the 25th and 75th percentiles of fares
+    avg_pu = borough_pu[(borough_pu[avg_fare_col] >= pu_25) & (borough_pu[avg_fare_col] <= pu_75)][pu_zone_col]
+    avg_do = borough_do[(borough_do[avg_fare_col] >= do_25) & (borough_do[avg_fare_col] <= do_75)][do_zone_col]
+    avg_zones = pd.concat([avg_pu, avg_do], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='average_zones')
+
+    return pricey_zones, cheap_zones, avg_zones
