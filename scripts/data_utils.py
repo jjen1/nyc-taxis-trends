@@ -1,30 +1,46 @@
 import pandas as pd
 
+def rearr_datetime_cols(df):
+    """ rearranging to have the columns in a more readable order """
+    datetime_cols = ['PU_datetime', 'DO_datetime', 'duration_mins', 'trip_distance', 'passenger_count', 'PU_Zone', 'PU_service_zone', 'DO_Zone', 'DO_service_zone']
+    df = df[datetime_cols + [c for c in df.columns if c not in datetime_cols]]
+    return df
+
 def remove_outliers(df, duration_col='duration_mins', distance_col='trip_distance', lower=0.01, upper=0.99):
     """
-    Remove rows with non-positive duration or distance, then filter out extreme outliers
+    remove rows with non-positive duration or distance, then filter out extreme outliers
     based on quantiles for both duration and distance columns.
-    Returns a cleaned DataFrame with index reset.
+    returns a cleaned DataFrame with index reset.
     """
-    # Remove negative values
+    # remove negative values
     df_clean = df[(df[duration_col] > 0) & (df[distance_col] > 0)].copy()
-    # Calculate quantile thresholds
+    # calculate quantile thresholds
     duration_min = df_clean[duration_col].quantile(lower)
     duration_max = df_clean[duration_col].quantile(upper)
     distance_min = df_clean[distance_col].quantile(lower)
     distance_max = df_clean[distance_col].quantile(upper)
-    # Filter out outliers
+    # filter out outliers
     mask = (
         df_clean[duration_col].between(duration_min, duration_max) &
         df_clean[distance_col].between(distance_min, distance_max)
     )
     return df_clean[mask].reset_index(drop=True)
 
+def same_zone_perc(borough, borough_overall, borough_name, PU='PU_Zone', DO='DO_Zone'):
+    """returns % of rides within the same zone for rides strictly within and involving the borough"""
+    # strictly within the borough
+    percentage_within = (borough[borough[PU] == borough[DO]].shape[0] / borough.shape[0]) * 100
+    print(f"% of same zone rides within {borough_name}: {percentage_within:.2f}%")
+
+    # borough-involved rides
+    percentage_involved = (borough[borough[PU] == borough[DO]].shape[0] / borough_overall.shape[0]) * 100
+    print(f"% of same zone rides involving {borough_name}: {percentage_involved:.2f}%")
+
 def identify_cancelled_rides(df, ride_id_cols = ['VendorID','PU_datetime', 'DO_datetime', 'PULocationID', 'DOLocationID', 'duration_mins', 'trip_distance', 'passenger_count', 'payment_type', 'RatecodeID']):
     """
     'ride_id_cols' serve as a unique ride identification, EXCEPT fare_amount since we want to match pairs of rides with opposite fare amounts
-    Remove rides with negative fare amounts, which are likely cancelled or refunded.
-    Returns a cleaned DataFrame with index reset.
+    remove rides with negative fare amounts, which are likely cancelled or refunded.
+    returns a cleaned DataFrame with index reset.
     """
     # filters for negative and positive fare amounts
     neg_fare = df[df['fare_amount'] < 0].copy()
