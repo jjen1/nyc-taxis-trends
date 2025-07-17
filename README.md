@@ -1,4 +1,4 @@
-# NYC Taxi Analysis (WIP)
+# NYC Taxi Tips & Borough Trends (WIP)
 **Understanding Tipping Behavior Across Boroughs and Segments**
 
 ## Project Overview
