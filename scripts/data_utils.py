@@ -38,19 +38,30 @@ def same_zone_perc(borough, borough_overall, borough_name, PU='PU_Zone', DO='DO_
 
 def identify_cancelled_rides(df, ride_id_cols = ['VendorID','PU_datetime', 'DO_datetime', 'PULocationID', 'DOLocationID', 'duration_mins', 'trip_distance', 'passenger_count', 'payment_type', 'RatecodeID']):
     """
-    'ride_id_cols' serve as a unique ride identification, EXCEPT fare_amount since we want to match pairs of rides with opposite fare amounts
+    'ride_id_cols' serve as a unique ride identification, EXCEPT fare_amount & other monetary columns since we want to match pairs of rides with opposite fare amounts
     remove rides with negative fare amounts, which are likely cancelled or refunded.
     returns a cleaned DataFrame with index reset.
     """
-    # filters for negative and positive fare amounts
-    neg_fare = df[df['fare_amount'] < 0].copy()
-    pos_fare = df[df['fare_amount'] > 0].copy()
+    fee_cols = ['fare_amount', 'extra', 'mta_tax', 'tip_amount', 'improvement_surcharge', 'congestion_surcharge', 'tolls_amount', 'Airport_fee', 'cbd_congestion_fee']
+    # fill nulls in ride_id_cols with a placeholder
+    for col in ride_id_cols:
+        df[col] = df[col].fillna('N/A') # will need to replace passenger_count later on with 0s
+
+    # fill nulls in fee_cols with 0
+    df[fee_cols] = df[fee_cols].fillna(0)
+
+    # filters for negative and positive fee columns
+    neg_fare = df[(df[fee_cols] < 0).any(axis=1)].copy()
+    pos_fare = df[(df[fee_cols] > 0).any(axis=1)].copy()
 
     # merge the dfs
     merged_fares = neg_fare.merge(pos_fare, on=ride_id_cols, suffixes=('_neg', '_pos'))
-    
-    # now we have all the pairs where fare amounts are exact opposites
-    matched_pairs = merged_fares[merged_fares['fare_amount_neg'] == -merged_fares['fare_amount_pos']]
+
+    # find pairs where all fee columns are exact opposites
+    fee_opposite_mask = (
+        merged_fares[[f + '_neg' for f in fee_cols]].values == -merged_fares[[f + '_pos' for f in fee_cols]].values
+    ).all(axis=1)
+    matched_pairs = merged_fares[fee_opposite_mask]
 
     return matched_pairs
 
@@ -100,3 +111,17 @@ def categorize_zones(borough_pu, borough_do, borough_avg_fare, avg_fare_col='avg
 
     return pricey_zones, cheap_zones, avg_zones
 
+def neighborhood_fare_quantiles(exp, avg, cheap, fare_col='fare_amount', quantiles=[0.25, 0.5, 0.75]):
+    return pd.DataFrame({
+        'expensive_neighborhoods': exp[fare_col].quantile(quantiles),
+        'average_neighborhoods': avg[fare_col].quantile(quantiles),
+        'cheap_neighborhoods': cheap[fare_col].quantile(quantiles)
+    }, index=pd.Index(quantiles, name='Quantile'))
+
+
+def neighborhood_tip_quantiles(exp, avg, cheap, tip_col='tip_amount', quantiles=[0.25, 0.5, 0.75]):
+    return pd.DataFrame({
+        'expensive_neighborhoods': exp[tip_col].quantile(quantiles),
+        'average_neighborhoods': avg[tip_col].quantile(quantiles),
+        'cheap_neighborhoods': cheap[tip_col].quantile(quantiles)
+    }, index=pd.Index(quantiles, name='Quantile'))
