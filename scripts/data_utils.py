@@ -118,10 +118,56 @@ def neighborhood_fare_quantiles(exp, avg, cheap, fare_col='fare_amount', quantil
         'cheap_neighborhoods': cheap[fare_col].quantile(quantiles)
     }, index=pd.Index(quantiles, name='Quantile'))
 
+def borough_tip_cleaned(borough_cleaned, tip='tip_amount', fare='fare_amount'):
+    """ clean the borough dataframe for tip analysis
+    - filters out rides with fare_amount < 1
+    - calculates tip to fare and tip to total ratios
+    - removes outliers based on tip amounts
+    - filters out extreme outliers based on tip to fare and tip to total ratios
+    - returns a cleaned DataFrame with monetary columns at the end for better readability"""
+    # picking a percentile
+    tip_quant = borough_cleaned[tip].quantile(0.99999)
 
-def neighborhood_tip_quantiles(exp, avg, cheap, tip_col='tip_amount', quantiles=[0.25, 0.5, 0.75]):
-    return pd.DataFrame({
-        'expensive_neighborhoods': exp[tip_col].quantile(quantiles),
-        'average_neighborhoods': avg[tip_col].quantile(quantiles),
-        'cheap_neighborhoods': cheap[tip_col].quantile(quantiles)
-    }, index=pd.Index(quantiles, name='Quantile'))
+    # removing rides with fare_amount < 1, since they can skew the data due to atypical fare amounts
+    borough_cleaned = borough_cleaned[borough_cleaned[fare] >= 1].copy()
+
+    # find the tip to fare and tip to total ratios for the rest of the columns
+    borough_cleaned['tip_fare_ratio'] = (borough_cleaned[tip] / borough_cleaned[fare]) * 100
+    borough_cleaned['tip_fare_ratio'] = borough_cleaned['tip_fare_ratio'].round(2)
+    borough_cleaned['tip_total_ratio'] = (borough_cleaned[tip] / (borough_cleaned[tip] + borough_cleaned[fare])) * 100
+    borough_cleaned['tip_total_ratio'] = borough_cleaned['tip_total_ratio'].round(2)
+
+    # rearranging the columns to have the monetary columns at the end for better readability
+    monetary_cols = [fare, tip, 'tip_fare_ratio', 'tip_total_ratio','total_amount', 'extra', 'mta_tax', 'improvement_surcharge', 'tolls_amount', 'congestion_surcharge', 'cbd_congestion_fee', 'Airport_fee']
+    borough_tips = borough_cleaned[monetary_cols + [c for c in borough_cleaned.columns if c not in monetary_cols]].sort_values(by=[tip, fare], ascending=False).copy()
+
+    # creating a mask to filter out the outliers in tip amounts
+    outlier_mask = ((borough_tips[tip] > borough_tips[fare]) & (borough_tips[tip] > tip_quant))
+    borough_tips = borough_tips[~outlier_mask]  # checking the statistics of the non-outlier tips
+
+    # set a threshold for each ratio: extremely generous thresholds to filter out the extreme outliers
+    tip_total_ratio_threshold = borough_tips['tip_total_ratio'].quantile(0.999) 
+    tip_fare_ratio_threshold = borough_tips['tip_fare_ratio'].quantile(0.999)
+
+    # further filtering with ratios
+    borough_tips = borough_tips[(borough_tips['tip_fare_ratio'] < tip_fare_ratio_threshold) & (borough_tips['tip_total_ratio'] < tip_total_ratio_threshold)]
+    return borough_tips
+
+def match_tip_neighborhoods (borough_tips, borough_neighborhoods, ride_id_cols):
+    """ match tips with neighborhoods based on ride_id_cols
+    - ride_id_cols serve as a unique ride identification
+    - filters borough_tips for records in borough_neighborhoods
+    - returns a DataFrame with matched tips and neighborhoods
+    """
+    # copy the dfs
+    borough_tips =borough_tips.copy()
+    borough_neighborhoods = borough_neighborhoods.copy()
+
+    # saving the keys to a new column for easier filtering later
+    borough_tips['ride_key'] = borough_tips[ride_id_cols].astype(str).agg('_'.join, axis=1) 
+    borough_neighborhoods['ride_key'] = borough_neighborhoods[ride_id_cols].astype(str).agg('_'.join, axis=1)
+
+    # filter borough_tips for records in borough_neighborhoods
+    b_zone_tips = borough_tips[borough_tips['ride_key'].isin(borough_neighborhoods['ride_key'])]
+
+    return b_zone_tips
