@@ -36,13 +36,14 @@ def same_zone_perc(borough, borough_overall, borough_name, PU='PU_Zone', DO='DO_
     percentage_involved = (borough[borough[PU] == borough[DO]].shape[0] / borough_overall.shape[0]) * 100
     print(f"% of same zone rides involving {borough_name}: {percentage_involved:.2f}%")
 
-def identify_cancelled_rides(df, ride_id_cols = ['VendorID','PU_datetime', 'DO_datetime', 'PULocationID', 'DOLocationID', 'duration_mins', 'trip_distance', 'passenger_count', 'payment_type', 'RatecodeID']):
+def identify_cancelled_rides(df, ride_id_cols, fee_cols):
     """
-    'ride_id_cols' serve as a unique ride identification, EXCEPT fare_amount & other monetary columns since we want to match pairs of rides with opposite fare amounts
-    remove rides with negative fare amounts, which are likely cancelled or refunded.
-    returns a cleaned DataFrame with index reset.
+    - 'ride_id_cols' serve as a unique ride identification
+    - fare_amount and other monetary columns will be stored in 'fee_cols' since we want to match pairs of rides with opposite fare amounts
+    - remove rides with negative fare amounts, which are likely cancelled or refunded.
+    - returns a cleaned DataFrame with index reset.
     """
-    fee_cols = ['fare_amount', 'extra', 'mta_tax', 'tip_amount', 'improvement_surcharge', 'congestion_surcharge', 'tolls_amount', 'Airport_fee', 'cbd_congestion_fee']
+    
     # fill nulls in ride_id_cols with a placeholder
     for col in ride_id_cols:
         df[col] = df[col].fillna('N/A') # will need to replace passenger_count later on with 0s
@@ -65,48 +66,51 @@ def identify_cancelled_rides(df, ride_id_cols = ['VendorID','PU_datetime', 'DO_d
 
     return matched_pairs
 
-def remove_cancelled_fare_pairs(df, matched_pairs, ride_id_cols = ['VendorID','PU_datetime', 'DO_datetime', 'PULocationID', 'DOLocationID', 'duration_mins', 'trip_distance', 'passenger_count', 'payment_type', 'RatecodeID']):
+def remove_cancelled_fare_pairs(df, matched_pairs):
     """
-    remove cancelled fare pairs from the original DataFrame using index-based removal.
-    removes both sides of the matched pairs (negative and positive fares).
+    remove cancelled fare pairs from the original DataFrame using index-based removal
+    removes both sides of the matched pairs (negative and positive fares)
     """
-    # Get the index of the matched pairs (from the merged DataFrame)
+    # gets the index of the matched pairs (from the merged dataframe)
     matched_idx = matched_pairs.index
-    # Remove rows from df whose index is in matched_idx
+
+    # remove rows from df whose index is in matched_idx
     df_cleaned = df[~df.index.isin(matched_idx)]
-    # Remove any remaining negative fares not affiliated with a matching pair
+
+    # remove any remaining negative fares not affiliated with a matching pair
     df_cleaned = df_cleaned[df_cleaned['fare_amount'] >= 0]
+
     return df_cleaned.reset_index(drop=True)
 
-def categorize_zones(borough_pu, borough_do, borough_avg_fare, avg_fare_col='avg_fare', pu_zone_col='PU_Zone', do_zone_col='DO_Zone'):
+def categorize_zones(borough_pu_avg, borough_do_avg, borough_avg_fare, avg_fare_col='avg_fare', pu_zone_col='PU_Zone', do_zone_col='DO_Zone'):
     """
-    categorize zones based on average fare amounts and their quartiles
+    categorizing zones based on average fare amounts and their quartiles
     returns 3 dataframes: pricey_zones, cheap_zones, avg_zones
     - pricey_zones: zones with fares above the 75th percentile of borough average fare
     - cheap_zones: zones with fares below the 25th percentile of borough average fare
     - avg_zones: zones with fares between the 25th and 75th percentiles of borough average fare 
     """
     # finding the 75th percentile of fares that are above the borough average fare 
-    pu_75 = borough_pu[borough_pu[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
-    do_75 = borough_do[borough_do[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
+    pu_75 = borough_pu_avg[borough_pu_avg[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
+    do_75 = borough_do_avg[borough_do_avg[avg_fare_col] > borough_avg_fare][avg_fare_col].quantile(0.75)
 
     # finding the 25th percentile of fares that are lower than the borough average fare 
-    pu_25 = borough_pu[borough_pu[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
-    do_25 = borough_do[borough_do[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
+    pu_25 = borough_pu_avg[borough_pu_avg[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
+    do_25 = borough_do_avg[borough_do_avg[avg_fare_col] < borough_avg_fare][avg_fare_col].quantile(0.25)
 
     # pricier zones: based on the 75th percentile of fares
-    pricey_pu_zones = borough_pu[(borough_pu[avg_fare_col] > borough_avg_fare) & (borough_pu[avg_fare_col] > pu_75)][pu_zone_col]  
-    pricey_do_zones = borough_do[(borough_do[avg_fare_col] > borough_avg_fare) & (borough_do[avg_fare_col] > do_75)][do_zone_col]
+    pricey_pu_zones = borough_pu_avg[(borough_pu_avg[avg_fare_col] > borough_avg_fare) & (borough_pu_avg[avg_fare_col] > pu_75)][pu_zone_col]
+    pricey_do_zones = borough_do_avg[(borough_do_avg[avg_fare_col] > borough_avg_fare) & (borough_do_avg[avg_fare_col] > do_75)][do_zone_col]
     pricey_zones = pd.concat([pricey_pu_zones, pricey_do_zones], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='pricier_zones')
 
     # cheap zones: based on the 25th percentile of fares
-    cheap_pu_zones = borough_pu[(borough_pu[avg_fare_col] < borough_avg_fare) & (borough_pu[avg_fare_col] < pu_25)][pu_zone_col]  
-    cheap_do_zones = borough_do[(borough_do[avg_fare_col] < borough_avg_fare) & (borough_do[avg_fare_col] < do_25)][do_zone_col]
+    cheap_pu_zones = borough_pu_avg[(borough_pu_avg[avg_fare_col] < borough_avg_fare) & (borough_pu_avg[avg_fare_col] < pu_25)][pu_zone_col]
+    cheap_do_zones = borough_do_avg[(borough_do_avg[avg_fare_col] < borough_avg_fare) & (borough_do_avg[avg_fare_col] < do_25)][do_zone_col]
     cheap_zones = pd.concat([cheap_pu_zones, cheap_do_zones], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='cheaper_zones')
 
     # average zones: based on the 25th and 75th percentiles of fares
-    avg_pu = borough_pu[(borough_pu[avg_fare_col] >= pu_25) & (borough_pu[avg_fare_col] <= pu_75)][pu_zone_col]
-    avg_do = borough_do[(borough_do[avg_fare_col] >= do_25) & (borough_do[avg_fare_col] <= do_75)][do_zone_col]
+    avg_pu = borough_pu_avg[(borough_pu_avg[avg_fare_col] >= pu_25) & (borough_pu_avg[avg_fare_col] <= pu_75)][pu_zone_col]
+    avg_do = borough_do_avg[(borough_do_avg[avg_fare_col] >= do_25) & (borough_do_avg[avg_fare_col] <= do_75)][do_zone_col]
     avg_zones = pd.concat([avg_pu, avg_do], axis=0).drop_duplicates().reset_index(drop=True).to_frame(name='average_zones')
 
     return pricey_zones, cheap_zones, avg_zones
@@ -160,7 +164,7 @@ def match_tip_neighborhoods (borough_tips, borough_neighborhoods, ride_id_cols):
     - returns a DataFrame with matched tips and neighborhoods
     """
     # copy the dfs
-    borough_tips =borough_tips.copy()
+    borough_tips = borough_tips.copy()
     borough_neighborhoods = borough_neighborhoods.copy()
 
     # saving the keys to a new column for easier filtering later
@@ -171,3 +175,23 @@ def match_tip_neighborhoods (borough_tips, borough_neighborhoods, ride_id_cols):
     b_zone_tips = borough_tips[borough_tips['ride_key'].isin(borough_neighborhoods['ride_key'])]
 
     return b_zone_tips
+
+def constant_tips(borough_tips, borough_exp_tips, borough_avg_tips, borough_cheap_tips, tip_col='tip_amount'):
+    """ finding what percentage of rides in their respective categories are above the general average tip amount """
+
+    # finding what percentage of rides in their respective categories are above the general average tip amount in Manhattan
+    borough_avg = borough_tips[tip_col].mean()
+
+    # percentage of rides with tips above the average tip amount in expensive zones
+    exp = (borough_exp_tips[tip_col] >= borough_avg).sum() / borough_exp_tips.shape[0] * 100  
+
+    # percentage of rides with tips above the average tip amount in cheap zones
+    cheap = (borough_cheap_tips[tip_col] <= borough_avg).sum() / borough_cheap_tips.shape[0] * 100  
+
+    # calculate mean tip values for expensive and cheap zones
+    exp_avg = borough_exp_tips[tip_col].mean()
+    cheap_avg = borough_cheap_tips[tip_col].mean()
+    # percentage of rides with tips between the average tip in expensive and cheap zones in average zones
+
+    avg = borough_avg_tips[tip_col].between(min(exp_avg, cheap_avg), max(exp_avg, cheap_avg)).sum() / borough_avg_tips.shape[0] * 100
+    return f'Expensive Neighborhoods: {round(exp, 2)} %\nAverage Neighborhoods: {round(avg, 2)} %\nCheap Neighborhoods: {round(cheap, 2)} %'
