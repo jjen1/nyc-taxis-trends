@@ -195,3 +195,4 @@ def constant_tips(borough_tips, borough_exp_tips, borough_avg_tips, borough_chea
 
     avg = borough_avg_tips[tip_col].between(min(exp_avg, cheap_avg), max(exp_avg, cheap_avg)).sum() / borough_avg_tips.shape[0] * 100
     return f'Expensive Neighborhoods: {round(exp, 2)} %\nAverage Neighborhoods: {round(avg, 2)} %\nCheap Neighborhoods: {round(cheap, 2)} %'
+
