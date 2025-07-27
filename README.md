@@ -25,12 +25,7 @@ The analysis is performed using Python libraries like `pandas`, `matplotlib`, an
 - Compare tipping on **weekends vs. weekdays**.
 - Evaluate tipping after working hours and during nightlife periods.
 
-### 4. Trip Characteristics & Tips
-- Examine correlation between:
-  - Ride **distance/duration** and tip amount/percentage.
-  - Long rides vs. short rides: do longer rides earn better tips?
-
-### 5. Customer & Payment Segmentation
+### 4. Customer & Payment Segmentation
 - Analyze by:
   - **Passenger count** (e.g., group rides might influence tipping).
   - **Payment types** (credit card vs. cash).
@@ -38,7 +33,7 @@ The analysis is performed using Python libraries like `pandas`, `matplotlib`, an
   - **Additional fees** and their impact on tipping.
   - Frequent vs. non-frequent riders (if data allows tracking).
 
-### 6. Driver/Vendor Impact
+### 5. Driver/Vendor Impact
 - Compare tipping across different vendor types.
 - Study the impact of **wait times** (request time vs. actual pickup) on tipping behavior.
 
