@@ -3,7 +3,7 @@
 
 ## Project Overview
 
-This project explores tipping behavior in New York City ride-hailing and taxi services, including Uber, Lyft, and yellow taxis. Using [NYC TLC Trip Record Data 2025](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), the goal is to uncover how different characteristics influence tip amounts and patterns.
+This project explores tipping behavior in New York City ride-hailing and taxi services, including Uber, Lyft, and yellow taxis. Using [NYC TLC Trip Record Data 2025](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), the goal is to uncover insights on trends across boroughs, segmenting rides by different characteristics and how they influence taxi fares and tipping behavior.
 
 The analysis is performed using Python libraries like `pandas`, `matplotlib`, and `seaborn`. All development is done in VSCode, with version control handled through Git.
 
