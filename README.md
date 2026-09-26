@@ -1,9 +1,9 @@
-# NYC Taxi Tips & Borough Trends (WIP)
+# NYC Taxi Tips & Borough Trends
 **Understanding Tipping Behavior Across Boroughs and Segments**
 
 ## Project Overview
 
-This project explores tipping behavior in New York City ride-hailing and taxi services, including Uber, Lyft, and yellow taxis. Using [NYC TLC Trip Record Data 2025](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), the goal is to uncover insights on trends across boroughs, segmenting rides by different characteristics and how they influence taxi fares and tipping behavior.
+This project explores tipping behavior in New York City ride-hailing and taxi services. Using [NYC TLC Trip Record Data 2025](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), the goal is to uncover insights on trends across boroughs, segmenting rides by different characteristics and how they influence taxi fares and tipping behavior.
 
 The analysis is performed using Python libraries like `pandas`, `matplotlib`, and `seaborn`. All development is done in VSCode, with version control handled through Git.
 
@@ -29,13 +29,10 @@ The analysis is performed using Python libraries like `pandas`, `matplotlib`, an
 - Analyze by:
   - **Passenger count** (e.g., group rides might influence tipping).
   - **Payment types** (credit card vs. cash).
-  - **Subscription users** (UberOne, LyftPink) — limited to `fhvhv` dataset.
   - **Additional fees** and their impact on tipping.
-  - Frequent vs. non-frequent riders (if data allows tracking).
 
 ### 5. Driver/Vendor Impact
 - Compare tipping across different vendor types.
-- Study the impact of **wait times** (request time vs. actual pickup) on tipping behavior.
 
 ## Tech Stack
 - **Languages & Libraries**: Python, pandas, matplotlib, seaborn
